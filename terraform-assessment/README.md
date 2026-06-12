@@ -1,96 +1,113 @@
-# Month 1 Assessment - TechCorp AWS Infrastructure
+# TechCorp AWS Infrastructure Deployment 🚀
 
-This repository contains the Terraform configuration to deploy the new web application infrastructure for TechCorp on AWS.
+Welcome to the TechCorp Month 1 Assessment project! This repository contains a complete Infrastructure as Code (IaC) solution using **Terraform** to automatically provision a highly available, secure, and scalable web application environment on Amazon Web Services (AWS).
 
-## Prerequisites
+---
 
-1.  **AWS Account**: You must have an active AWS account.
-2.  **AWS CLI**: Installed and configured with appropriate credentials (`aws configure`).
-3.  **Terraform**: Installed on your local machine.
-4.  **SSH Key Pair**: An existing EC2 Key Pair in your chosen AWS region.
+## 🏗️ Architecture Overview
 
-## Configuration
+This project deploys a robust, production-ready AWS architecture designed for security and high availability. 
 
-1.  Copy the example variables file:
-    ```bash
-    cp terraform.tfvars.example terraform.tfvars
-    ```
-2.  Edit `terraform.tfvars` and provide your specific values:
-    *   `aws_region`: The AWS region (e.g., `us-east-1`).
-    *   `key_pair_name`: The name of your existing EC2 Key Pair.
-    *   `admin_ip`: Your current public IP address in CIDR notation (e.g., `203.0.113.5/32`) to allow SSH access to the Bastion host.
+### Network Infrastructure
+- **Virtual Private Cloud (VPC)**: A secure, isolated network (`10.0.0.0/16`) serving as the foundation for all resources.
+- **Public Subnets**: Two public subnets distributed across different Availability Zones (AZs). These host internet-facing resources like the Load Balancer and Bastion Host.
+- **Private Subnets**: Two private subnets across different AZs. These host the internal application servers and database, strictly isolating them from direct internet access.
+- **Gateways**: An Internet Gateway for public subnet traffic, and two NAT Gateways (one per public subnet) allowing outbound internet access for the private servers (e.g., to download software updates).
 
-## Deployment Steps
+### Compute & Application
+- **Bastion Host** (`t3.micro`): A secure gateway located in the public subnet. It acts as the only entry point for administrators to SSH into the internal servers.
+- **Application Load Balancer (ALB)**: Distributes incoming HTTP web traffic evenly across the web servers in the private subnets to ensure high availability.
+- **Web Servers** (2x `t3.micro`): Hosted in private subnets. They are automatically configured on startup (via User Data scripts) to run an Apache HTTP server and serve dynamic content.
+- **Database Server** (1x `t3.small`): Hosted in a private subnet, configured on startup to run PostgreSQL.
 
-1.  **Initialize Terraform**:
-    ```bash
-    terraform init
-    ```
-    This downloads the necessary provider plugins.
+### Security
+- **Strict Security Groups**: 
+  - The Web servers only accept HTTP/HTTPS traffic from the public, and SSH traffic *exclusively* from the Bastion host.
+  - The Database server only accepts PostgreSQL traffic (Port 5432) from the Web servers, and SSH traffic from the Bastion host.
+  - The Bastion host restricts SSH access strictly to the Administrator's configured Public IP.
 
-2.  **Validate the Configuration**:
-    ```bash
-    terraform validate
-    ```
-    This ensures the syntax is correct.
+---
 
-3.  **Plan the Deployment**:
-    ```bash
-    terraform plan
-    ```
-    *TAKE A SCREENSHOT OF THIS OUTPUT FOR EVIDENCE.*
+## 📋 Prerequisites
 
-4.  **Apply the Configuration**:
-    ```bash
-    terraform apply
-    ```
-    Type `yes` when prompted.
-    *TAKE A SCREENSHOT OF THE COMPLETION OUTPUT FOR EVIDENCE.*
+Before deploying this infrastructure, ensure you have the following:
+1. An active **AWS Account**.
+2. **AWS CLI** installed and authenticated (or a configured `~/.aws/credentials` file).
+3. **Terraform** installed on your local machine.
+4. An existing **AWS EC2 Key Pair** (e.g., `keypair.pem`) in your chosen AWS Region.
+5. Your current **Public IP Address** (to allow you to securely SSH into the Bastion Host).
 
-## Verification
+---
 
-Once deployed, Terraform will output three values:
-*   `bastion_public_ip`
-*   `load_balancer_dns_name`
-*   `vpc_id`
+## 🚀 Deployment Instructions
 
-### Web Access
-1.  Open a web browser and navigate to the `load_balancer_dns_name` provided in the outputs (e.g., `http://techcorp-web-alb-xxxx.us-east-1.elb.amazonaws.com`).
-2.  Refresh a few times to see the Load Balancer distributing traffic between the two web instances (the Instance ID will change).
-    *TAKE A SCREENSHOT OF THE BROWSER SHOWING THE PAGE FOR EVIDENCE.*
+Follow these steps to deploy the environment from your terminal:
 
-### SSH Access
-1.  **SSH to Bastion Host**:
-    ```bash
-    ssh -i /path/to/your/keypair.pem ec2-user@<bastion_public_ip>
-    ```
-    *TAKE A SCREENSHOT OF THE BASTION SSH SESSION FOR EVIDENCE.*
+### 1. Configuration
+First, copy the example variables file to create your active configuration file:
+```bash
+cp terraform.tfvars.example terraform.tfvars
+```
+Open `terraform.tfvars` and update the following values:
+* `aws_region`: Your desired AWS region (e.g., `eu-west-2`).
+* `key_pair_name`: The exact name of your EC2 Key Pair as it appears in the AWS Console (e.g., `keypair`).
+* `admin_ip`: Your public IP address in CIDR format (e.g., `102.90.115.147/32`).
 
-2.  **SSH from Bastion to Web/DB Servers**:
-    From inside the Bastion host, you can SSH to the private IP addresses of your web or database servers using the password configured in the user data scripts (`TechCorp123!`):
-    ```bash
-    ssh ec2-user@<private_ip_of_web_or_db>
-    ```
-    (You can find the private IPs in the AWS EC2 Console).
-    *TAKE A SCREENSHOT OF THE SSH SESSIONS FOR EVIDENCE.*
+### 2. Initialize Terraform
+Download the necessary AWS provider plugins:
+```bash
+terraform init
+```
 
-### Database Access
-1.  SSH into the DB Server from the Bastion host.
-2.  Connect to Postgres:
-    ```bash
-    sudo -u postgres psql
-    ```
-    *TAKE A SCREENSHOT OF THE POSTGRES PROMPT FOR EVIDENCE.*
+### 3. Plan the Deployment
+Review the resources Terraform is about to create:
+```bash
+terraform plan
+```
+*(Note: Be sure to take a screenshot of this output for your assessment evidence!)*
 
-## Cleanup Instructions
+### 4. Apply the Configuration
+Build the infrastructure:
+```bash
+terraform apply
+```
+Type `yes` when prompted. This process will take 2-5 minutes as the EC2 instances and Load Balancer are provisioned. 
+*(Take a screenshot of the "Apply complete!" message).*
 
-To avoid incurring future charges, completely destroy the infrastructure when you are finished testing:
+---
 
+## 🧪 Verification & Testing
+
+When the deployment finishes, Terraform will output three important values: `vpc_id`, `bastion_public_ip`, and `load_balancer_dns_name`.
+
+### Testing Web Access
+1. Copy the `load_balancer_dns_name` and paste it into your web browser. 
+2. You should see a "Welcome to TechCorp Web Server!" page displaying an Instance ID. 
+3. Refresh the page a few times—you will see the Instance ID change as the Load Balancer routes you between the two different web servers!
+
+### Testing SSH Access
+1. **Access the Bastion Host:**
+   ```bash
+   ssh -i "/path/to/your/keypair.pem" ec2-user@<bastion_public_ip>
+   ```
+2. **Access the Private Web/DB Servers:**
+   Once inside the Bastion Host, find the private IP address of your web or database server from the AWS Console, and SSH into it:
+   ```bash
+   ssh ec2-user@<private_ip_of_server>
+   ```
+   *Password: `TechCorp123!`*
+
+---
+
+## 🧹 Cleanup Instructions
+
+**CRITICAL:** Cloud resources cost money! When you are finished exploring the infrastructure and have taken all your required screenshots, you must destroy the environment to avoid recurring AWS charges.
+
+Run the following command:
 ```bash
 terraform destroy
 ```
-Type `yes` when prompted.
+Type `yes` when prompted. Wait for the confirmation that all resources have been successfully destroyed.
 
-## Evidence Folder
-
-Please place all required screenshots into the `evidence/` folder within this repository before submission.
+---
+*Created for the TechCorp Month 1 Assessment.*
